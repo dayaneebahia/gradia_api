@@ -1,0 +1,39 @@
+# Django framework
+Django==5.1.3
+
+# PostgreSQL database adapter
+psycopg2-binary
+# Django REST Framework
+djangorestframework==3.14.0
+
+# Django Filters
+django-filter==23.2
+
+# CORS Headers
+django-cors-headers==4.2.0
+
+# Static file management (for production)
+whitenoise==6.5.0
+
+# Optional production-ready WSGI server (only needed for deployment)
+gunicorn==20.1.0
+
+# OpenAPI documentation for DRF
+drf-spectacular==0.26.3
+
+# Plotting library (only needed if using graphs in API)
+matplotlib==3.10.0
+
+# Environment variable management
+python-dotenv==1.0.1
+
+firebase-admin
+
+# Requests library (dependency for keycloak)
+requests
+djangorestframework-simplejwt
+cryptography
+django-keycloak
+
+
+

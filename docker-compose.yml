@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:14
+    container_name: postgres_db
+    restart: always
+    environment:
+      POSTGRES_DB: gradiafinance
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 5
+
+  gradiafinance:
+    build: .
+    container_name: django_app
+    restart: always
+    volumes:
+      - .:/app
+      - ./gradiafinance/config:/app/config  # Ensure Firebase config is available inside container
+    ports:
+      - "8081:8081"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DEBUG=True
+      - DB_NAME=gradiafinance
+      - DB_USER=postgres
+      - DB_PASSWORD=admin
+      - DB_HOST=db
+      - DB_PORT=5432
+      - FIREBASE_CREDENTIALS=/app/config/gradia-dev-firebase-adminsdk.json  # Firebase Admin SDK Path
+
+volumes:
+  pgdata:
