@@ -252,6 +252,7 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
             "current_amount",
             "planned_amount",
             "type_choice",
+            "date",
             "created_at",
             "updated_at",
             "diff_planned_actual",

@@ -6,6 +6,6 @@ from django.urls import path, include  # Make sure to import `include`
 urlpatterns = [
     path('admin/', admin.site.urls),
     # Include the URLs from the finance app
-    path('', include('finance.urls')),  # Include finance URLs here
+    path('finance/', include('finance.urls')),  # Include finance URLs here
 ]
 

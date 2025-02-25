@@ -37,9 +37,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_extensions',
     'rest_framework',
     'finance',
     'corsheaders',
+     "storages",
 ]
 
 MIDDLEWARE = [
@@ -53,6 +55,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
 ]
+
 
 ROOT_URLCONF = 'gradiafinance.urls'
 
@@ -77,13 +80,23 @@ TEMPLATES = [
 WSGI_APPLICATION = 'gradiafinance.wsgi.application'
 
 CORS_ALLOWED_ORIGINS = [
-    "https://gradia-dev.firebaseapp.com",
-    "http://localhost:3000",  # React frontend (if using)
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:8080",
     "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://10.0.2.2:8000",   # For Android Emulator
+    "http://192.168.1.100:8000",  # If accessing from another machine
+    "http://localhost:19000",  # Expo Dev URL
+    "http://localhost:19006",  # Expo Web Preview
 ]
-# Database
+
+CORS_ALLOW_ALL_ORIGINS = True  # TEMPORARY: Allow everything during testing
+CORS_ALLOW_CREDENTIALS = True
+
+AWS_ACCESS_KEY_ID = "AKIA4MTWMYOSNBSBFZES"
+AWS_SECRET_ACCESS_KEY = "VAcgOaezAHVW+TX2pllvlQpT8s86NrSON5ccm8lQ"
+AWS_STORAGE_BUCKET_NAME = "gradia"
+AWS_S3_REGION_NAME = "us-east-1"  # Change to your AWS region
+AWS_S3_CUSTOM_DOMAIN = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {

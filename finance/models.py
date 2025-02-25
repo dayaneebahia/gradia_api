@@ -291,6 +291,7 @@ class FinancialRecord(models.Model):
     type_choice = models.CharField(max_length=8, choices=TYPE_CHOICES, default=EXPENSES)
     current_amount = models.DecimalField(max_digits=13, decimal_places=2, default=Decimal("0.00"))
     planned_amount = models.DecimalField(max_digits=13, decimal_places=2, default=Decimal("0.00"))
+    date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     firebase_uid = models.CharField(max_length=255, blank=True, null=True)  # Firebase UID field

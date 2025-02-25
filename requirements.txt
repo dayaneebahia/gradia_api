@@ -34,6 +34,9 @@ requests
 djangorestframework-simplejwt
 cryptography
 django-keycloak
+boto3 
+django-storages
 
 
 
+django-extensions

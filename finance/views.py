@@ -249,6 +249,7 @@ class FinancialRecordViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         category = serializer.validated_data.get("category")
         cycle = serializer.validated_data.get("cycle")
+        date = serializer.validated_data.get("date", None)
 
         # Ensure the category belongs to the authenticated user
         if category.user != self.request.user:
@@ -291,7 +292,8 @@ class FinancialRecordViewSet(viewsets.ModelViewSet):
                         type_choice=record.type_choice,
                         current_amount=record.current_amount,
                         planned_amount=record.planned_amount,
-                        firebase_uid=request.data.get("firebase_uid")  # Add if needed
+                        firebase_uid=request.data.get("firebase_uid"),  # Add if needed
+                        date=None
                     ))
                 FinancialRecord.objects.bulk_create(new_records)
                 return Response({"detail": "Records copied successfully."})
