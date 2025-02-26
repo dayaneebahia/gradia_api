@@ -300,3 +300,12 @@ class FinancialRecord(models.Model):
         period_name = self.period.title if self.period else "No Period"
         return f"{self.type_choice.capitalize()} - {self.category.name} ({self.cycle.name}, {period_name}): Current={self.current_amount}, Planned={self.planned_amount}"
 
+class FinancialRecordFile(models.Model):
+    """Stores file metadata related to a Financial Record (file stored in S3)."""
+    id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, primary_key=True)
+    financial_record = models.ForeignKey(FinancialRecord, related_name="files", on_delete=models.CASCADE)
+    file_url = models.URLField()  # Stores the S3 file URL
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"File for {self.financial_record} - {self.file_url}"

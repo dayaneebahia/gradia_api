@@ -1,6 +1,11 @@
 # Use an official Python image
 FROM python:3.11
 
+# Set environment variables for AWS (these will be overridden by docker-compose)
+ENV AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+ENV AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+ENV AWS_REGION=${AWS_REGION}
+
 # Set the working directory in the container
 WORKDIR /app
 

@@ -16,7 +16,7 @@ from rest_framework.generics import GenericAPIView
 from django.conf import settings
 from rest_framework.pagination import PageNumberPagination
 from django.contrib.auth.models import User
-from .models import Cycle, Period, FinancialRecord, Category
+from .models import Cycle, Period, FinancialRecord, Category,  FinancialRecordFile
 from django.db.models import Sum, Q
 import matplotlib.pyplot as plt
 from io import BytesIO
@@ -31,6 +31,8 @@ from .serializers import (
     VerifyTokenSerializer,
     PeriodSummarySerializer, 
     CopyFinancialRecordsSerializer,
+    FinancialRecordFileSerializer,
+    
 
     
 )
@@ -39,10 +41,14 @@ from rest_framework import permissions
 from decimal import Decimal
 from rest_framework.decorators import action
 from django.db import transaction
+import boto3
+from django.conf import settings
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+import logging
 
 
-
-
+logger = logging.getLogger(__name__) 
 # Firebase Token Verification
 
 class VerifyTokenView(GenericAPIView):
@@ -249,7 +255,6 @@ class FinancialRecordViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         category = serializer.validated_data.get("category")
         cycle = serializer.validated_data.get("cycle")
-        date = serializer.validated_data.get("date", None)
 
         # Ensure the category belongs to the authenticated user
         if category.user != self.request.user:
@@ -260,15 +265,51 @@ class FinancialRecordViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("The selected cycle's period does not belong to you.")
 
         # Save the financial record
-        file = self.request.FILES.get('file')
-        financial_record = serializer.save()
+        serializer.save()
 
-        # Save the uploaded file if provided
-        if file:
-            FileUpload.objects.create(
-                file=file,
-                financial_record=financial_record
-            )
+    @action(detail=True, methods=["post"], url_path="upload-file")
+    def upload_file(self, request, pk=None):
+        """Uploads a file to S3 and associates it with a financial record"""
+        try:
+            logger.info("🔍 Uploading file for record ID: %s", pk)  # Log record ID
+
+            financial_record = self.get_object()
+            file = request.FILES.get("file")
+
+            if not file:
+                logger.error("🚨 No file provided in the request.")
+                return Response({"error": "No file uploaded"}, status=400)
+
+            # 🔍 Validate file type
+            allowed_types = ["application/pdf", "image/png", "image/jpeg"]
+            if file.content_type not in allowed_types:
+                logger.error("🚨 Invalid file type: %s", file.content_type)
+                return Response({"error": "Invalid file type. Only PDFs and images are allowed."}, status=400)
+
+            # 🔍 Debug File Details
+            logger.info("📂 File name: %s", file.name)
+            logger.info("📂 File type: %s", file.content_type)
+            logger.info("📂 File size: %d bytes", file.size)
+
+            # 🔥 Upload to S3
+            s3 = boto3.client("s3")
+            file_key = f"financial_records/{financial_record.id}/{file.name}"
+            s3.upload_fileobj(file, settings.AWS_STORAGE_BUCKET_NAME, file_key)
+
+            file_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com/{file_key}"
+
+            # 🔍 Log S3 URL
+            logger.info("✅ File successfully uploaded to S3: %s", file_url)
+
+            # Save File Metadata
+            FinancialRecordFile.objects.create(financial_record=financial_record, file_url=file_url)
+
+            return Response({"file_url": file_url, "message": "File uploaded successfully"}, status=201)
+
+        except Exception as e:
+            logger.error("❌ File upload failed: %s", str(e), exc_info=True)
+            return Response({"error": f"File upload failed: {str(e)}"}, status=500)
+        
     @action(detail=False, methods=["post"], url_path="copy-previous-month")
     def copy_previous_month(self, request):
         user = request.user
@@ -292,13 +333,14 @@ class FinancialRecordViewSet(viewsets.ModelViewSet):
                         type_choice=record.type_choice,
                         current_amount=record.current_amount,
                         planned_amount=record.planned_amount,
-                        firebase_uid=request.data.get("firebase_uid"),  # Add if needed
-                        date=None
+                        firebase_uid=request.data.get("firebase_uid"),
+                        date=None  # Reset date for copied records
                     ))
                 FinancialRecord.objects.bulk_create(new_records)
                 return Response({"detail": "Records copied successfully."})
         except Exception as e:
             return Response({"detail": str(e)}, status=500)
+        
 
 class PeriodSummaryView(APIView):
     def get(self, request, *args, **kwargs):
@@ -335,18 +377,6 @@ class PeriodSummaryView(APIView):
         except Exception as e:
             print(f"Error fetching period summary: {e}")
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-import matplotlib.pyplot as plt
-from io import BytesIO
-from django.http import HttpResponse, JsonResponse
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from django.db.models import Sum, Q
-from .models import Period, Cycle, Category
-from django.utils import timezone
-from rest_framework.exceptions import ValidationError
 
 
 class ReportDataView(APIView):

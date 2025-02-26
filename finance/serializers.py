@@ -1,6 +1,6 @@
 # serializers.py
 from rest_framework import serializers
-from .models import Period, Cycle, FinancialRecord, Category
+from .models import Period, Cycle, FinancialRecord, Category, FinancialRecordFile
 from django.contrib.auth.models import User
 from drf_spectacular.utils import extend_schema_field
 from decimal import Decimal
@@ -287,3 +287,9 @@ class CopyFinancialRecordsSerializer(serializers.Serializer):
             raise serializers.ValidationError("Both cycles must belong to the same period.")
 
         return data
+    
+
+class FinancialRecordFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FinancialRecordFile
+        fields = ["id", "financial_record", "file_url", "uploaded_at"]
