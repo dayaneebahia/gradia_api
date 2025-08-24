@@ -28,8 +28,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    env_file:
-      - .env  # Load AWS credentials and other environment variables
     environment:
       - DEBUG=True
       - DB_NAME=gradiafinance
