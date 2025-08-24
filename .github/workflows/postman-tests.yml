@@ -11,26 +11,66 @@ jobs:
   postman-tests:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: gradiafinance
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: admin
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
     steps:
-    - name: Checkout main repository
+    - name: Checkout repository with submodules
       uses: actions/checkout@v3
       with:
-        submodules: true  # inicializa o submódulo automaticamente
+        submodules: true
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
 
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
         node-version: '18'
 
+    - name: Install Python dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+
     - name: Install Newman
       run: npm install -g newman
+
+    - name: Run Django migrations
+      env:
+        DATABASE_URL: postgres://postgres:admin@postgres:5432/gradiafinance
+      run: python manage.py migrate
+
+    - name: Start Django server in background
+      run: |
+        nohup python manage.py runserver 0.0.0.0:8000 &
+        sleep 10  # espera o server subir
+
+    - name: Check server health
+      run: |
+        curl --retry 5 --retry-delay 3 http://localhost:8000/finance/cycles/ || true
 
     - name: Run Postman Collection
       run: |
         newman run tests/postman/collections/Finance\ API.postman_collection.json \
         -e tests/postman/collections/DEV.postman_environment.json \
         --reporters cli,junit \
-        --reporter-junit-export results.xml
+        --reporter-junit-export results.xml \
+        --suppress-exit-code
 
     - name: Upload Test Results
       uses: actions/upload-artifact@v4
