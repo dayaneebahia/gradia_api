@@ -11,69 +11,49 @@ jobs:
   postman-tests:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: gradiafinance
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: admin
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
     steps:
-    - name: Checkout repository with submodules
-      uses: actions/checkout@v3
-      with:
-        submodules: true
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
+      - name: Build and start Postgres service
+        run: docker-compose up -d db
 
-    - name: Install Python dependencies
-      run: |
-        pip install --upgrade pip
-        pip install -r requirements.txt
+      - name: Wait for Postgres to be healthy
+        run: |
+          echo "Waiting for Postgres..."
+          for i in {1..10}; do
+            docker-compose exec db pg_isready -U postgres && break
+            sleep 3
+          done
 
-    - name: Install Newman
-      run: npm install -g newman
+      - name: Build and start Django service
+        run: docker-compose up -d gradiafinance
 
-    - name: Run Django migrations
-      env:
-        DATABASE_URL: postgres://postgres:admin@postgres:5432/gradiafinance
-      run: python manage.py migrate
+      - name: Wait for Django server to be ready
+        run: |
+          echo "Waiting for Django..."
+          for i in {1..15}; do
+            docker-compose exec gradiafinance curl --retry 5 --retry-delay 3 http://localhost:8000/finance/cycles/ && break
+            echo "Retry $i..."
+            sleep 3
+          done
 
-    - name: Start Django server in background
-      run: |
-        nohup python manage.py runserver 0.0.0.0:8000 &
-        sleep 10  # espera o server subir
+      - name: Run Postman Collection inside Django container
+        run: |
+          docker-compose exec gradiafinance newman run tests/postman/collections/Finance\ API.postman_collection.json \
+          -e tests/postman/collections/DEV.postman_environment.json \
+          --reporters cli,junit \
+          --reporter-junit-export /app/results.xml \
+          --suppress-exit-code
 
-    - name: Check server health
-      run: |
-        curl --retry 5 --retry-delay 3 http://localhost:8000/finance/cycles/ || true
+      - name: Copy results from container
+        run: docker cp $(docker-compose ps -q gradiafinance):/app/results.xml ./results.xml
 
-    - name: Run Postman Collection
-      run: |
-        newman run tests/postman/collections/Finance\ API.postman_collection.json \
-        -e tests/postman/collections/DEV.postman_environment.json \
-        --reporters cli,junit \
-        --reporter-junit-export results.xml \
-        --suppress-exit-code
-
-    - name: Upload Test Results
-      uses: actions/upload-artifact@v4
-      with:
-        name: postman-results
-        path: results.xml
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-results
+          path: results.xml
