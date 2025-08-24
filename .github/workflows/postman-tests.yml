@@ -19,18 +19,18 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Build and start Postgres service
-        run: docker-compose up -d db
+        run: docker compose up -d db
 
       - name: Wait for Postgres to be healthy
         run: |
           echo "Waiting for Postgres..."
           for i in {1..10}; do
-            docker-compose exec db pg_isready -U postgres && break
+            docker compose exec db pg_isready -U postgres && break
             sleep 3
           done
 
       - name: Build and start Django service
-        run: docker-compose up -d gradiafinance
+        run: docker compose up -d gradiafinance
 
       - name: Wait for Django server to be ready
         run: |
