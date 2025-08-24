@@ -106,7 +106,7 @@ DATABASES = {
         'NAME': 'gradiafinance',
         'USER': 'postgres',
         'PASSWORD': 'admin',
-        'HOST': 'postgres_db',  # Make sure this matches the service name in docker-compose.yml
+        'HOST': 'db',  # Make sure this matches the service name in docker-compose.yml
         'PORT': '5432',
     }
 }
