@@ -1,3 +1,0 @@
-[submodule "tests/postman"]
-	path = tests/postman
-	url = https://github.com/dayaneebahia/postman-api-tests.git
