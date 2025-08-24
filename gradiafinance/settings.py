@@ -17,6 +17,7 @@ if not os.path.isfile(FIREBASE_ADMIN_CREDENTIAL):
 cred = credentials.Certificate(FIREBASE_ADMIN_CREDENTIAL)
 firebase_admin.initialize_app(cred)
 
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
