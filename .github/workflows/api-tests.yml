@@ -1,0 +1,68 @@
+name: Run Postman API Tests
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  postman-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Tests Repository
+        uses: actions/checkout@v3
+
+      - name: Clone API Repository
+        run: git clone https://github.com/dayaneebahia/gradia_api.git
+
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+
+      - name: Build and start API via Docker Compose
+        working-directory: gradia_api
+        run: |
+          docker-compose up -d --build
+          echo "Waiting for API to be ready..."
+          until curl -s http://localhost:8000/finance/cycles/ > /dev/null; do
+            echo "Waiting..."
+            sleep 5
+          done
+
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Newman
+        run: npm install -g newman
+
+      - name: Run Postman Collection
+        run: |
+          newman run collections/Finance\ API.postman_collection.json \
+            -e collections/DEV.postman_environment.json \
+            --reporters cli,junit \
+            --reporter-junit-export results.xml
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-results
+          path: results.xml
+
+      - name: Publish JUnit Report
+        uses: actions/upload-test-report@v3
+        with:
+          path: results.xml
+          format: junit
+
+      - name: Stop and remove Docker containers
+        if: always()  
+        working-directory: gradia_api
+        run: |
+          docker-compose down
