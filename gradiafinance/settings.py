@@ -7,15 +7,27 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+# --- Firebase (opcional/CI-friendly) ---
+from pathlib import Path
+import os
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+FIREBASE_ENABLED = os.getenv("FIREBASE_ENABLED", "true").lower() == "true"
+FIREBASE_CREDENTIALS = os.getenv(
+    "FIREBASE_CREDENTIALS",
+    os.path.join(BASE_DIR, "config", "gradia-dev-firebase-adminsdk.json"),
+)
 
-# Path to your service account key (use for local development)
-FIREBASE_ADMIN_CREDENTIAL = "gradiafinance/config/gradia-dev-firebase-adminsdk.json"
-if not os.path.isfile(FIREBASE_ADMIN_CREDENTIAL):
-   raise ValueError(f"Firebase Admin Credential file not found at: {FIREBASE_ADMIN_CREDENTIAL}. Check your environment variable settings.")
-cred = credentials.Certificate(FIREBASE_ADMIN_CREDENTIAL)
-firebase_admin.initialize_app(cred)
+if FIREBASE_ENABLED and os.path.isfile(FIREBASE_CREDENTIALS):
+    import firebase_admin
+    from firebase_admin import credentials
+    cred = credentials.Certificate(FIREBASE_CREDENTIALS)
+    firebase_admin.initialize_app(cred)
+else:
+
+    pass
+
 
 
 # Quick-start development settings - unsuitable for production
@@ -99,16 +111,24 @@ AWS_REGION = os.getenv("AWS_REGION")
 
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# --- Database (usa env vars) ---
+DB_NAME = os.getenv("DB_NAME", "gradiafinance")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "admin")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_HOST = os.getenv("DB_HOST", "db")  # no Actions será "localhost"
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'gradiafinance',
-        'USER': 'postgres',
-        'PASSWORD': 'admin',
-        'HOST': 'db',  # Make sure this matches the service name in docker-compose.yml
-        'PORT': '5432',
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": DB_NAME,
+        "USER": DB_USER,
+        "PASSWORD": DB_PASSWORD,
+        "HOST": DB_HOST,
+        "PORT": DB_PORT,
     }
 }
+
 
 
 

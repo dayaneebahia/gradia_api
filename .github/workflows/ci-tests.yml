@@ -1,4 +1,4 @@
-name: CI — Django Pytest (PR) + Email Always
+name: CI — Django Pytest (PR) + Email
 
 on:
   pull_request:
