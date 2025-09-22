@@ -1,0 +1,106 @@
+name: CI — Django Pytest (PR) + Email
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_DB: gradiafinance
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: admin
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U postgres -d gradiafinance"
+          --health-interval=5s --health-timeout=5s --health-retries=10
+
+    env:
+      DB_NAME: gradiafinance
+      DB_USER: postgres
+      DB_PASSWORD: admin
+      DB_HOST: localhost            
+      DB_PORT: 5432
+      DJANGO_SETTINGS_MODULE: gradiafinance.settings
+      DEBUG: "False"
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      STATIC_ROOT: staticfiles
+      FIREBASE_CREDENTIALS: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install system deps (psycopg)
+        run: sudo apt-get update && sudo apt-get install -y libpq-dev
+
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+
+      - name: Run migrations
+        run: python manage.py migrate --noinput
+
+      - name: Run pytest (JUnit XML)
+        run: |
+          mkdir -p reports
+          pytest -q --junitxml=reports/junit.xml
+
+      - name: Upload JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-report
+          path: reports/junit.xml
+          if-no-files-found: warn
+
+  email-notify:
+    name: Send email (always)
+    needs: tests
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download JUnit report
+        uses: actions/download-artifact@v4
+        with:
+          name: junit-report
+          path: artifacts
+        continue-on-error: true
+
+      - name: Send email with status
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          from: ${{ secrets.ALERT_EMAIL_FROM }}
+          to: ${{ secrets.ALERT_EMAIL_TO }}
+          secure: ${{ secrets.SMTP_SECURE }}   
+          subject: "[${{ needs.tests.result }}] CI — Pytest on PR #${{ github.event.number }} — ${{ github.repository }}"
+          content_type: text/plain
+          body: |
+            CI status: ${{ needs.tests.result }}
+            Repository: ${{ github.repository }}
+            PR: #${{ github.event.number }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          attachments: artifacts/junit.xml
