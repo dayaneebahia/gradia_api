@@ -12,7 +12,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d gradiafinance"]
       interval: 5s
       retries: 5
 
@@ -22,7 +22,7 @@ services:
     restart: always
     volumes:
       - .:/app
-      - ./gradiafinance/config:/app/config  # Ensure Firebase config is available inside container
+      - ./gradiafinance/config:/app/config
     ports:
       - "8000:8000"
     depends_on:
@@ -35,7 +35,26 @@ services:
       - DB_PASSWORD=admin
       - DB_HOST=db
       - DB_PORT=5432
-      - FIREBASE_CREDENTIALS=/app/config/gradia-dev-firebase-adminsdk.json  # Firebase Admin SDK Path
+      - FIREBASE_CREDENTIALS=/app/config/gradia-dev-firebase-adminsdk.json
+
+  tests:
+    build: .
+    container_name: django_tests
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DEBUG=True
+      - DB_NAME=gradiafinance
+      - DB_USER=postgres
+      - DB_PASSWORD=admin
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DJANGO_SETTINGS_MODULE=gradiafinance.settings
+    volumes:
+      - .:/app
+      - ./gradiafinance/config:/app/config
+    command: ["pytest", "-q"]
 
 volumes:
   pgdata:
